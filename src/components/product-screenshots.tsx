@@ -355,95 +355,165 @@ export function DeployScreenshot() {
 }
 
 export function InsightsScreenshot() {
+  const conversations = [
+    { id: "#4890", topic: "FNOL — water damage", rating: 4.2, outcome: "Resolved", gaps: 0, suggestions: 0 },
+    { id: "#4887", topic: "Deductible inquiry — auto", rating: 3.1, outcome: "Resolved", gaps: 1, suggestions: 1 },
+    { id: "#4882", topic: "Multi-policy discount", rating: 2.4, outcome: "Escalated", gaps: 2, suggestions: 2 },
+    { id: "#4879", topic: "Claim status follow-up", rating: 4.8, outcome: "Resolved", gaps: 0, suggestions: 0 },
+    { id: "#4875", topic: "Coverage change request", rating: 1.9, outcome: "Failed", gaps: 3, suggestions: 3 },
+  ];
+
+  const gapDetections = [
+    { type: "Knowledge Gap", color: "bg-orange-500", label: "text-orange-700", bg: "bg-orange-50", icon: "📚", title: "\"Partial claim\" not in knowledge base", detail: "23 conversations couldn't find an answer for partial claims — agent improvised in 18 cases", source: "Diagnostic Rule: coverage_completeness_check", action: "Add to Knowledge Base →" },
+    { type: "Guideline Gap", color: "bg-red-500", label: "text-red-700", bg: "bg-red-50", icon: "📋", title: "Missing escalation rule for multi-policy disputes", detail: "Agent attempted resolution 7 times without escalation path — violates SLA for complex claims", source: "Diagnostic Rule: escalation_path_validator", action: "Create Guideline →" },
+    { type: "Ops Improvement", color: "bg-blue-500", label: "text-blue-700", bg: "bg-blue-50", icon: "⚙️", title: "Deductible FAQ takes 40% longer than avg", detail: "Customers repeat \"how much do I pay\" 2.3× — a quick-reference card would reduce handle time by ~35s", source: "Diagnostic Rule: handle_time_anomaly_detector", action: "Optimize Flow →" },
+  ];
+
   return (
-    <WindowChrome title="iKendo — Insights & Analytics">
-      <div className="flex min-h-[380px]">
+    <WindowChrome title="iKendo — Analyze & Insights">
+      <div className="flex min-h-[480px]">
         {/* Sidebar */}
-        <div className="w-40 border-r border-border bg-secondary/30 p-3 space-y-1 hidden sm:block">
-          <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2 px-3">Analytics</div>
-          <SidebarItem icon={BarChart3} label="Overview" active />
+        <div className="w-44 border-r border-border bg-secondary/30 p-3 space-y-1 hidden sm:block">
+          <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mb-2 px-3">Insights</div>
+          <SidebarItem icon={BarChart3} label="Conversations" />
+          <SidebarItem icon={Brain} label="AI Suggestions" active />
+          <SidebarItem icon={Search} label="Gap Detection" />
           <SidebarItem icon={TrendingUp} label="Performance" />
-          <SidebarItem icon={MessageCircle} label="Conversations" />
-          <SidebarItem icon={Settings} label="Rules Audit" />
+          <SidebarItem icon={Settings} label="Diagnostic Rules" />
+          <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mt-4 mb-2 px-3">Feedback Loop</div>
+          <div className="px-3 py-1.5 text-[10px] text-foreground flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#8B3A2F]" />
+            Auto-train queue (5)
+          </div>
+          <div className="px-3 py-1.5 text-[10px] text-muted-foreground/60 flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            Applied this week (12)
+          </div>
           <div className="text-[9px] uppercase tracking-widest text-muted-foreground/40 mt-4 mb-2 px-3">Period</div>
           <div className="px-3 py-1 text-[10px] text-foreground bg-card rounded border border-border">Last 7 days</div>
         </div>
 
         {/* Main content */}
-        <div className="flex-1 p-5">
-          <div className="flex items-center justify-between mb-5">
+        <div className="flex-1 p-5 overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-light">Analytics Overview</h3>
-              <span className="text-[10px] text-muted-foreground/60">Claims Assistant · Apr 4 – Apr 11, 2026</span>
+              <h3 className="text-sm font-light">AI-Powered Optimization Suggestions</h3>
+              <span className="text-[10px] text-muted-foreground/60">Claims Assistant · Evidence-based analysis from 2,847 conversations</span>
             </div>
-            <div className="px-3 py-1 rounded-md border border-border text-[10px] text-muted-foreground flex items-center gap-1">
-              Export <ArrowUpRight className="w-2.5 h-2.5" />
+            <div className="flex gap-2">
+              <div className="px-3 py-1 rounded-md border border-border text-[10px] text-muted-foreground flex items-center gap-1">
+                Export <ArrowUpRight className="w-2.5 h-2.5" />
+              </div>
+              <div className="px-3 py-1 rounded-md bg-[#8B3A2F] text-white text-[10px] flex items-center gap-1">
+                Apply All to Training <ChevronRight className="w-2.5 h-2.5" />
+              </div>
             </div>
           </div>
 
-          {/* KPI cards */}
-          <div className="grid grid-cols-4 gap-3 mb-5">
-            {[
-              { label: "Total Conversations", value: "2,847", change: "+12%", up: true },
-              { label: "Resolution Rate", value: "94.7%", change: "+2.1%", up: true },
-              { label: "Avg Handle Time", value: "2m 14s", change: "-18s", up: true },
-              { label: "Rule Compliance", value: "100%", change: "—", up: true },
-            ].map((kpi) => (
-              <div key={kpi.label} className="border border-border rounded-lg p-3 bg-card">
-                <div className="text-[9px] text-muted-foreground/50 mb-1">{kpi.label}</div>
-                <div className="text-xl font-extralight text-foreground">{kpi.value}</div>
-                <div className={`text-[9px] mt-1 flex items-center gap-0.5 ${kpi.change === "—" ? "text-muted-foreground/40" : kpi.up ? "text-green-600" : "text-red-500"}`}>
-                  {kpi.change !== "—" && (kpi.up ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />)}
-                  {kpi.change}
+          {/* Conversation ratings table */}
+          <div className="border border-border rounded-lg overflow-hidden mb-4">
+            <div className="flex items-center justify-between px-4 py-2 bg-secondary/50">
+              <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1.5">
+                <MessageCircle className="w-3 h-3" /> Recent Conversations with Ratings
+              </span>
+              <span className="text-[9px] text-muted-foreground/40">Sorted by gaps detected ↓</span>
+            </div>
+            <div className="grid grid-cols-[50px_1fr_70px_70px_50px_60px] gap-1 px-4 py-1.5 bg-secondary/30 text-[8px] uppercase tracking-widest text-muted-foreground/40">
+              <span>ID</span><span>Topic</span><span className="text-center">Rating</span><span className="text-center">Outcome</span><span className="text-center">Gaps</span><span className="text-center">Actions</span>
+            </div>
+            {conversations.map((c) => (
+              <div key={c.id} className="grid grid-cols-[50px_1fr_70px_70px_50px_60px] gap-1 px-4 py-2 border-t border-border items-center">
+                <span className="text-[10px] text-muted-foreground/50">{c.id}</span>
+                <span className="text-[10px] text-foreground font-extralight">{c.topic}</span>
+                <div className="flex justify-center">
+                  <div className="flex items-center gap-0.5">
+                    {[1,2,3,4,5].map((star) => (
+                      <div key={star} className={`w-1.5 h-1.5 rounded-full ${star <= Math.round(c.rating) ? "bg-[#8B3A2F]" : "bg-border"}`} />
+                    ))}
+                    <span className="text-[9px] text-muted-foreground/50 ml-1">{c.rating}</span>
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                    c.outcome === "Resolved" ? "bg-green-500/10 text-green-600" :
+                    c.outcome === "Escalated" ? "bg-yellow-500/10 text-yellow-600" :
+                    "bg-red-500/10 text-red-600"
+                  }`}>{c.outcome}</span>
+                </div>
+                <div className="flex justify-center">
+                  {c.gaps > 0 ? (
+                    <span className="text-[10px] text-[#8B3A2F] font-normal">{c.gaps}</span>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground/30">—</span>
+                  )}
+                </div>
+                <div className="flex justify-center">
+                  {c.suggestions > 0 ? (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8B3A2F]/10 text-[#8B3A2F] cursor-pointer">View</span>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground/30">—</span>
+                  )}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Chart placeholder */}
-          <div className="border border-border rounded-lg p-4 bg-card mb-4">
+          {/* Gap Detection — the core feature */}
+          <div className="border border-[#8B3A2F]/20 rounded-lg p-4 bg-[#8B3A2F]/[0.02] mb-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] text-muted-foreground/60">Conversation Volume & Resolution</span>
-              <div className="flex gap-3 text-[9px] text-muted-foreground/50">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#8B3A2F]" /> Volume</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> Resolved</span>
+              <div className="flex items-center gap-2">
+                <Brain className="w-3.5 h-3.5 text-[#8B3A2F]" />
+                <span className="text-[11px] text-[#8B3A2F] font-normal">Evidence-Based Optimization Suggestions</span>
               </div>
+              <span className="text-[9px] text-muted-foreground/40">Generated from diagnostic rules · 3 new this week</span>
             </div>
-            {/* Mini bar chart */}
-            <div className="flex items-end gap-1.5 h-24">
-              {[65, 72, 58, 80, 75, 90, 85].map((v, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                  <div className="w-full flex gap-0.5">
-                    <div className="flex-1 bg-[#8B3A2F]/20 rounded-sm" style={{ height: `${v}px` }} />
-                    <div className="flex-1 bg-green-500/20 rounded-sm" style={{ height: `${v * 0.94}px` }} />
+
+            <div className="space-y-3">
+              {gapDetections.map((gap, i) => (
+                <div key={i} className={`border rounded-lg p-3 ${gap.bg} border-opacity-20`} style={{ borderColor: `var(--border)` }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[11px]">{gap.icon}</span>
+                        <span className={`text-[8px] uppercase tracking-widest font-normal ${gap.label}`}>{gap.type}</span>
+                      </div>
+                      <div className="text-[11px] text-foreground font-light mb-1">{gap.title}</div>
+                      <div className="text-[10px] text-muted-foreground/70 font-extralight leading-relaxed mb-1.5">{gap.detail}</div>
+                      <div className="text-[9px] text-muted-foreground/40 italic">{gap.source}</div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className="text-[9px] px-2 py-1 rounded bg-[#8B3A2F] text-white cursor-pointer whitespace-nowrap">{gap.action}</span>
+                      <span className="text-[9px] text-muted-foreground/40 cursor-pointer">Dismiss</span>
+                    </div>
                   </div>
-                  <span className="text-[8px] text-muted-foreground/40">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}
-                  </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* AI Suggestions */}
-          <div className="border border-[#8B3A2F]/20 rounded-lg p-4 bg-[#8B3A2F]/3">
-            <div className="flex items-center gap-2 mb-3">
-              <Brain className="w-3.5 h-3.5 text-[#8B3A2F]" />
-              <span className="text-[10px] text-[#8B3A2F] font-normal">3 AI Optimization Suggestions</span>
-            </div>
-            <div className="space-y-2">
-              {[
-                "Add a fallback rule for \"partial claim\" scenarios — 23 conversations hit this gap last week",
-                "Voice profile \"Yuki\" performs 8% better on FNOL calls than \"Kenji\" — consider switching default",
-                "Customers asking about deductibles take 40% longer — add a quick-reference knowledge card",
-              ].map((suggestion, i) => (
-                <div key={i} className="flex items-start gap-2 text-[10px] text-foreground font-extralight">
-                  <div className="w-4 h-4 rounded bg-[#8B3A2F]/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-[8px] text-[#8B3A2F]">{i + 1}</span>
-                  </div>
-                  {suggestion}
+          {/* Feedback loop indicator */}
+          <div className="border border-border rounded-lg p-3 bg-card flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <div className="w-6 h-6 rounded-full bg-[#8B3A2F]/10 flex items-center justify-center">
+                  <BarChart3 className="w-3 h-3 text-[#8B3A2F]" />
                 </div>
-              ))}
+                <ChevronRight className="w-3 h-3 text-muted-foreground/30" />
+                <div className="w-6 h-6 rounded-full bg-[#8B3A2F]/10 flex items-center justify-center">
+                  <Brain className="w-3 h-3 text-[#8B3A2F]" />
+                </div>
+                <ChevronRight className="w-3 h-3 text-muted-foreground/30" />
+                <div className="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center">
+                  <Check className="w-3 h-3 text-green-600" />
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-foreground font-light">Continuous Feedback Loop</div>
+                <div className="text-[9px] text-muted-foreground/50">12 suggestions applied to training this week · Agent accuracy improved 2.1%</div>
+              </div>
+            </div>
+            <div className="text-[9px] text-muted-foreground/40 flex items-center gap-1">
+              <TrendingUp className="w-3 h-3 text-green-600" /> Cycle #14
             </div>
           </div>
         </div>

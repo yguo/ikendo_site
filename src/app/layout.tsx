@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { KendoStrike } from "@/components/kendo-strike";
 
 const sora = localFont({
   variable: "--font-sans",
@@ -47,6 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sora.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-extralight">
+        <KendoStrike />
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />

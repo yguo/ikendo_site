@@ -1,5 +1,9 @@
 import { google } from "googleapis";
 import { NextResponse } from "next/server";
+import {
+  normalizePrivateKey,
+  normalizeSpreadsheetId,
+} from "@/lib/google-sheet-normalize";
 
 export const runtime = "nodejs";
 
@@ -13,45 +17,6 @@ type SiteverifyResponse = {
   hostname?: string;
   "error-codes"?: string[];
 };
-
-/**
- * Extract spreadsheet id from a URL or bare id.
- * Strips whitespace/BOM and decodes URL-encoding so pasted links survive .env pastes.
- */
-function normalizeSpreadsheetId(raw: string): string {
-  let s = raw
-    .trim()
-    .replace(/^\uFEFF/, "")
-    .replace(/\s+/g, "");
-  try {
-    s = decodeURIComponent(s);
-  } catch {
-    /* ignore */
-  }
-  const fromUrl = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i);
-  if (fromUrl) return fromUrl[1];
-  return s.replace(/[#?].*$/, "").replace(/\/$/, "");
-}
-
-/** Vercel / UI pastes often wrap PEM in quotes or use literal `\n`. */
-function normalizePrivateKey(raw: string | undefined): string | undefined {
-  if (!raw) return undefined;
-  let k = raw.trim().replace(/^\uFEFF/, "");
-  if (
-    (k.startsWith('"') && k.endsWith('"')) ||
-    (k.startsWith("'") && k.endsWith("'"))
-  ) {
-    k = k.slice(1, -1).trim();
-  }
-  k = k.replace(/\\n/g, "\n");
-  if (!k.includes("BEGIN PRIVATE KEY")) {
-    return undefined;
-  }
-  if (!k.endsWith("\n")) {
-    k += "\n";
-  }
-  return k;
-}
 
 function extractGoogleApiError(err: unknown): {
   httpStatus?: number;
@@ -88,8 +53,6 @@ function summarizeGoogleError(err: unknown): string {
     return "sheets_permission_denied";
   }
   if (lower.includes("not found") || httpStatus === 404) {
-    // Drive often returns 404 "File not found" when the caller has *no access*,
-    // not only when the id is wrong — treat as a dedicated hint for users.
     return "sheets_not_found_or_inaccessible";
   }
   if (lower.includes("unable to parse range") || lower.includes("invalid data")) {
@@ -200,11 +163,11 @@ export async function POST(request: Request) {
 
     const spreadsheetId = normalizeSpreadsheetId(sheetIdRaw);
 
-    // Default: Drive preflight + drive scope (helps Team Drive). For files only in My Drive
-    // you can set CONTACT_USE_DRIVE_PREFLIGHT=0 to use Sheets-only scope (minimal APIs).
+    // Drive preflight is OFF by default: Drive files.get can return misleading "File not found"
+    // for My Drive files that Sheets API can still open. Set CONTACT_USE_DRIVE_PREFLIGHT=1 for Team Drive.
     const useDrivePreflight =
-      process.env.CONTACT_USE_DRIVE_PREFLIGHT !== "0" &&
-      process.env.CONTACT_USE_DRIVE_PREFLIGHT !== "false";
+      process.env.CONTACT_USE_DRIVE_PREFLIGHT === "1" ||
+      process.env.CONTACT_USE_DRIVE_PREFLIGHT === "true";
 
     const scopes = useDrivePreflight
       ? [
@@ -276,7 +239,6 @@ export async function POST(request: Request) {
       spreadsheetId,
       range,
       valueInputOption: "USER_ENTERED",
-      insertDataOption: "INSERT_ROWS",
       requestBody: { values: [row] },
     });
 

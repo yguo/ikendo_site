@@ -56,6 +56,18 @@ const defaultForm = {
 const recaptchaSiteKey =
   process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
 
+const CONTACT_ERROR_HINTS: Record<string, string> = {
+  sheets_permission_denied:
+    "Share the spreadsheet with the service account (Editor) and enable Google Sheets API in GCP.",
+  sheets_not_found: "Check GOOGLE_SHEET_ID matches the spreadsheet URL.",
+  sheets_invalid_range:
+    "Set GOOGLE_SHEET_RANGE to an existing tab, e.g. Sheet1!A1 (tab name must match exactly).",
+  google_auth_failed:
+    "GOOGLE_PRIVATE_KEY is malformed in Vercel (use \\n for newlines in one line) or email does not match the key.",
+  missing_google_env: "Server is missing Google Sheets environment variables.",
+  unknown: "Please try again later.",
+};
+
 export default function ContactPage() {
   const [form, setForm] = useState(defaultForm);
   const [status, setStatus] = useState("");
@@ -121,9 +133,17 @@ export default function ContactPage() {
         }),
       });
 
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        cause?: string;
+        debug?: string;
+      };
       if (!res.ok) {
-        setStatus(data.error || "Something went wrong. Please try again.");
+        const hint = data.cause ? CONTACT_ERROR_HINTS[data.cause] : "";
+        setStatus(
+          [data.error, hint, data.debug].filter(Boolean).join(" — ") ||
+            "Something went wrong. Please try again."
+        );
         return;
       }
 

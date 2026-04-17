@@ -14,10 +14,52 @@ type SiteverifyResponse = {
   "error-codes"?: string[];
 };
 
+/** Vercel / UI pastes often wrap PEM in quotes or use literal `\n`. */
+function normalizePrivateKey(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  let k = raw.trim().replace(/^\uFEFF/, "");
+  if (
+    (k.startsWith('"') && k.endsWith('"')) ||
+    (k.startsWith("'") && k.endsWith("'"))
+  ) {
+    k = k.slice(1, -1).trim();
+  }
+  k = k.replace(/\\n/g, "\n");
+  if (!k.includes("BEGIN PRIVATE KEY")) {
+    return undefined;
+  }
+  return k;
+}
+
+function summarizeGoogleError(err: unknown): string {
+  const e = err as {
+    message?: string;
+    response?: { status?: number; data?: { error?: { message?: string; status?: string } } };
+  };
+  const status = e.response?.status;
+  const msg =
+    e.response?.data?.error?.message ||
+    (typeof e.message === "string" ? e.message : "");
+  const lower = msg.toLowerCase();
+  if (status === 403 || lower.includes("permission")) {
+    return "sheets_permission_denied";
+  }
+  if (lower.includes("not found") || status === 404) {
+    return "sheets_not_found";
+  }
+  if (lower.includes("unable to parse range") || lower.includes("invalid data")) {
+    return "sheets_invalid_range";
+  }
+  if (lower.includes("invalid_grant") || lower.includes("decoding")) {
+    return "google_auth_failed";
+  }
+  return "unknown";
+}
+
 async function verifyRecaptcha(token: string, remoteip: string) {
-  const secret = process.env.RECAPTCHA_SECRET_KEY;
+  const secret = process.env.RECAPTCHA_SECRET_KEY?.trim();
   if (!secret) {
-    throw new Error("Missing RECAPTCHA_SECRET_KEY");
+    return { ok: false as const, reason: "missing_recaptcha_secret", score: null as number | null };
   }
   const body = new URLSearchParams();
   body.set("secret", secret);
@@ -74,6 +116,12 @@ export async function POST(request: Request) {
 
     const recap = await verifyRecaptcha(recaptchaToken, ip);
     if (!recap.ok) {
+      if (recap.reason === "missing_recaptcha_secret") {
+        return NextResponse.json(
+          { error: "Contact form is not configured (RECAPTCHA_SECRET_KEY)." },
+          { status: 503 }
+        );
+      }
       return NextResponse.json(
         { error: "reCAPTCHA verification failed", code: recap.reason },
         { status: 400 }
@@ -92,24 +140,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const sheetId = process.env.GOOGLE_SHEET_ID;
-    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+    const sheetId = process.env.GOOGLE_SHEET_ID?.trim();
+    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
+    const privateKey = normalizePrivateKey(process.env.GOOGLE_PRIVATE_KEY);
     if (!sheetId || !clientEmail || !privateKey) {
       return NextResponse.json(
-        { error: "Contact storage is not configured on the server" },
+        {
+          error: "Contact storage is not configured on the server",
+          cause: "missing_google_env",
+        },
         { status: 503 }
       );
     }
 
-    const auth = new google.auth.JWT({
+    const jwt = new google.auth.JWT({
       email: clientEmail,
       key: privateKey,
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
 
-    const sheets = google.sheets({ version: "v4", auth });
-    const range = process.env.GOOGLE_SHEET_RANGE || "Sheet1!A:J";
+    const sheets = google.sheets({ version: "v4", auth: jwt });
+    const range = (process.env.GOOGLE_SHEET_RANGE || "Sheet1!A1").trim();
 
     const row = [
       new Date().toISOString(),
@@ -134,6 +185,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[contact]", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    const cause = summarizeGoogleError(err);
+    const debug =
+      process.env.NODE_ENV === "development" || process.env.CONTACT_API_DEBUG === "1";
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      {
+        error: "Server error",
+        cause,
+        ...(debug ? { debug: message } : {}),
+      },
+      { status: 500 }
+    );
   }
 }

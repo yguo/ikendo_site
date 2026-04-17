@@ -66,6 +66,13 @@ function extractGoogleApiError(err: unknown): {
 function summarizeGoogleError(err: unknown): string {
   const { httpStatus, message } = extractGoogleApiError(err);
   const lower = (message ?? "").toLowerCase();
+  if (
+    lower.includes("has not been used") ||
+    lower.includes("is disabled") ||
+    lower.includes("enable it by visiting")
+  ) {
+    return "google_api_disabled";
+  }
   if (httpStatus === 403 || lower.includes("permission")) {
     return "sheets_permission_denied";
   }
@@ -180,11 +187,46 @@ export async function POST(request: Request) {
 
     const spreadsheetId = normalizeSpreadsheetId(sheetIdRaw);
 
+    // Team Drive / Shared drive files often need Drive scope in addition to Sheets.
+    // Enable both "Google Sheets API" and "Google Drive API" on the same GCP project.
     const jwt = new google.auth.JWT({
       email: clientEmail,
       key: privateKey,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      scopes: [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+      ],
     });
+
+    const drive = google.drive({ version: "v3", auth: jwt });
+    const driveRes = await drive.files.get({
+      fileId: spreadsheetId,
+      supportsAllDrives: true,
+      fields: "id,name,mimeType,capabilities(canEdit)",
+    });
+
+    const mime = driveRes.data.mimeType;
+    if (mime && mime !== "application/vnd.google-apps.spreadsheet") {
+      return NextResponse.json(
+        {
+          error: "GOOGLE_SHEET_ID is not a Google Sheet file",
+          cause: "wrong_mime",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (driveRes.data.capabilities?.canEdit === false) {
+      return NextResponse.json(
+        {
+          error:
+            "This service account can view the file but cannot edit it. Grant Editor on the file, add the account to the Team Drive as Content manager, or remove sheet/range protection that blocks editors.",
+          cause: "drive_not_editable",
+          shareWithEmail: clientEmail,
+        },
+        { status: 403 }
+      );
+    }
 
     const sheets = google.sheets({ version: "v4", auth: jwt });
     const range = (process.env.GOOGLE_SHEET_RANGE || "Sheet1!A1").trim();

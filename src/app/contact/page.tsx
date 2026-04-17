@@ -65,6 +65,11 @@ const CONTACT_ERROR_HINTS: Record<string, string> = {
   google_auth_failed:
     "GOOGLE_PRIVATE_KEY is malformed in Vercel (use \\n for newlines in one line) or email does not match the key.",
   missing_google_env: "Server is missing Google Sheets environment variables.",
+  drive_not_editable:
+    "The file is visible to the service account but not editable — upgrade share to Editor, add the account to the Team Drive, or adjust protected ranges.",
+  wrong_mime: "GOOGLE_SHEET_ID points to a file that is not a Google Spreadsheet.",
+  google_api_disabled:
+    "In Google Cloud Console (same project as this service account), enable APIs: Google Drive API and Google Sheets API, then wait a minute and retry.",
   unknown: "Please try again later.",
 };
 

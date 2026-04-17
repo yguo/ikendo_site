@@ -58,7 +58,7 @@ const recaptchaSiteKey =
 
 const CONTACT_ERROR_HINTS: Record<string, string> = {
   sheets_permission_denied:
-    "In Google Sheets: Share → add the service account below as Editor (same project as your API key). In GCP: enable “Google Sheets API”.",
+    "Share this file with the service account as Editor. If it lives in a Team Drive (Shared drive), add the same account to that drive as Content manager, or move the sheet to My Drive. Check Data → Protected sheets and ranges. GOOGLE_SHEET_ID should be the id only (or paste the full URL). GOOGLE_SHEET_RANGE tab name must match the sheet tab at the bottom exactly.",
   sheets_not_found: "Check GOOGLE_SHEET_ID matches the spreadsheet URL.",
   sheets_invalid_range:
     "Set GOOGLE_SHEET_RANGE to an existing tab, e.g. Sheet1!A1 (tab name must match exactly).",
@@ -138,14 +138,22 @@ export default function ContactPage() {
         cause?: string;
         debug?: string;
         shareWithEmail?: string;
+        googleStatus?: string;
+        googleMessage?: string;
       };
       if (!res.ok) {
         const hint = data.cause ? CONTACT_ERROR_HINTS[data.cause] : "";
         const shareLine = data.shareWithEmail
           ? `Service account to add as Editor: ${data.shareWithEmail}`
           : "";
+        const googleLine =
+          data.googleMessage || data.googleStatus
+            ? [data.googleStatus, data.googleMessage].filter(Boolean).join(": ")
+            : "";
         setStatus(
-          [data.error, hint, shareLine, data.debug].filter(Boolean).join(" — ") ||
+          [data.error, hint, shareLine, googleLine, data.debug]
+            .filter(Boolean)
+            .join(" — ") ||
             "Something went wrong. Please try again."
         );
         return;

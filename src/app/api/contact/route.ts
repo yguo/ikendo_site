@@ -14,6 +14,14 @@ type SiteverifyResponse = {
   "error-codes"?: string[];
 };
 
+/** If user pasted a full Sheets URL, extract the spreadsheet id. */
+function normalizeSpreadsheetId(raw: string): string {
+  const s = raw.trim();
+  const fromUrl = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (fromUrl) return fromUrl[1];
+  return s.replace(/[#?].*$/, "").replace(/\/$/, "");
+}
+
 /** Vercel / UI pastes often wrap PEM in quotes or use literal `\n`. */
 function normalizePrivateKey(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
@@ -28,23 +36,40 @@ function normalizePrivateKey(raw: string | undefined): string | undefined {
   if (!k.includes("BEGIN PRIVATE KEY")) {
     return undefined;
   }
+  if (!k.endsWith("\n")) {
+    k += "\n";
+  }
   return k;
 }
 
-function summarizeGoogleError(err: unknown): string {
+function extractGoogleApiError(err: unknown): {
+  httpStatus?: number;
+  status?: string;
+  message?: string;
+} {
   const e = err as {
     message?: string;
-    response?: { status?: number; data?: { error?: { message?: string; status?: string } } };
+    response?: {
+      status?: number;
+      data?: { error?: { message?: string; status?: string; code?: number } };
+    };
   };
-  const status = e.response?.status;
-  const msg =
-    e.response?.data?.error?.message ||
+  const httpStatus = e.response?.status;
+  const api = e.response?.data?.error;
+  const message =
+    (typeof api?.message === "string" && api.message) ||
     (typeof e.message === "string" ? e.message : "");
-  const lower = msg.toLowerCase();
-  if (status === 403 || lower.includes("permission")) {
+  const status = typeof api?.status === "string" ? api.status : undefined;
+  return { httpStatus, status, message };
+}
+
+function summarizeGoogleError(err: unknown): string {
+  const { httpStatus, message } = extractGoogleApiError(err);
+  const lower = (message ?? "").toLowerCase();
+  if (httpStatus === 403 || lower.includes("permission")) {
     return "sheets_permission_denied";
   }
-  if (lower.includes("not found") || status === 404) {
+  if (lower.includes("not found") || httpStatus === 404) {
     return "sheets_not_found";
   }
   if (lower.includes("unable to parse range") || lower.includes("invalid data")) {
@@ -140,10 +165,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const sheetId = process.env.GOOGLE_SHEET_ID?.trim();
+    const sheetIdRaw = process.env.GOOGLE_SHEET_ID?.trim();
     const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
     const privateKey = normalizePrivateKey(process.env.GOOGLE_PRIVATE_KEY);
-    if (!sheetId || !clientEmail || !privateKey) {
+    if (!sheetIdRaw || !clientEmail || !privateKey) {
       return NextResponse.json(
         {
           error: "Contact storage is not configured on the server",
@@ -153,6 +178,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const spreadsheetId = normalizeSpreadsheetId(sheetIdRaw);
+
     const jwt = new google.auth.JWT({
       email: clientEmail,
       key: privateKey,
@@ -161,6 +188,11 @@ export async function POST(request: Request) {
 
     const sheets = google.sheets({ version: "v4", auth: jwt });
     const range = (process.env.GOOGLE_SHEET_RANGE || "Sheet1!A1").trim();
+
+    await sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: "spreadsheetId,properties.title,sheets.properties(sheetId,title)",
+    });
 
     const row = [
       new Date().toISOString(),
@@ -176,9 +208,10 @@ export async function POST(request: Request) {
     ];
 
     await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
+      spreadsheetId,
       range,
       valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS",
       requestBody: { values: [row] },
     });
 
@@ -186,6 +219,7 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("[contact]", err);
     const cause = summarizeGoogleError(err);
+    const { status: googleStatus, message: googleMessage } = extractGoogleApiError(err);
     const debug =
       process.env.NODE_ENV === "development" || process.env.CONTACT_API_DEBUG === "1";
     const message = err instanceof Error ? err.message : String(err);
@@ -193,10 +227,16 @@ export async function POST(request: Request) {
       cause === "sheets_permission_denied"
         ? process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || null
         : null;
+    const safeGoogleMessage =
+      googleMessage && googleMessage.length > 0
+        ? googleMessage.slice(0, 280)
+        : undefined;
     return NextResponse.json(
       {
         error: "Server error",
         cause,
+        ...(googleStatus ? { googleStatus } : {}),
+        ...(safeGoogleMessage ? { googleMessage: safeGoogleMessage } : {}),
         ...(shareWithEmail ? { shareWithEmail } : {}),
         ...(debug && cause !== "sheets_permission_denied"
           ? { debug: message }

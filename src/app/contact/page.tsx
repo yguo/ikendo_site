@@ -1,35 +1,151 @@
 "use client";
 
+import {
+  ChangeEvent,
+  FormEvent,
+  useMemo,
+  useState,
+} from "react";
+import Script from "next/script";
 import { AnimatedSection } from "@/components/animated-section";
 import { Button } from "@/components/ui/button";
 import { Mail, MapPin, ArrowRight } from "lucide-react";
 
 const offices = [
   {
+    key: "global",
+    region: "Global Inbox",
+    city: "Singapore, SG",
+    email: "ikendo@moreinsight.ai",
+  },
+  {
+    key: "north-america",
     region: "North America",
     city: "San Francisco, CA",
-    email: "na@ikendo.ai",
+    email: "amber@mastertalk.ai",
   },
   {
+    key: "europe",
     region: "Europe",
     city: "London, UK",
-    email: "eu@ikendo.ai",
+    email: "kelly@mastertalk.ai",
   },
   {
+    key: "japan",
     region: "Japan",
     city: "Tokyo, JP",
-    email: "jp@ikendo.ai",
+    email: "eric@mastertalk.ai",
   },
   {
-    region: "Southeast Asia",
+    key: "singapore",
+    region: "Singapore",
     city: "Singapore, SG",
-    email: "sea@ikendo.ai",
+    email: "ikendo@moreinsight.ai",
   },
 ];
 
+const defaultForm = {
+  firstName: "",
+  lastName: "",
+  workEmail: "",
+  company: "",
+  region: "global",
+  message: "",
+};
+
+const recaptchaSiteKey =
+  process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
+
 export default function ContactPage() {
+  const [form, setForm] = useState(defaultForm);
+  const [status, setStatus] = useState("");
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+
+  const selectedOffice = useMemo(
+    () => offices.find((office) => office.key === form.region) ?? offices[0],
+    [form.region]
+  );
+
+  function handleChange(
+    event: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!recaptchaSiteKey) {
+      setStatus(
+        "This form is not configured (missing NEXT_PUBLIC_RECAPTCHA_SITE_KEY)."
+      );
+      return;
+    }
+
+    if (!recaptchaLoaded) {
+      setStatus("Security check is still loading — try again in a moment.");
+      return;
+    }
+
+    setStatus("Sending…");
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const g = window.grecaptcha;
+        if (!g) {
+          reject(new Error("reCAPTCHA not loaded"));
+          return;
+        }
+        g.ready(() => resolve());
+      });
+
+      const token = await window.grecaptcha!.execute(recaptchaSiteKey, {
+        action: "contact",
+      });
+
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recaptchaToken: token,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          workEmail: form.workEmail,
+          company: form.company,
+          region: form.region,
+          regionLabel: selectedOffice.region,
+          message: form.message,
+        }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setStatus(data.error || "Something went wrong. Please try again.");
+        return;
+      }
+
+      setStatus("Thank you — your message was received.");
+      setForm(defaultForm);
+    } catch {
+      setStatus(
+        "Could not send right now. Check your connection or try again shortly."
+      );
+    }
+  }
+
   return (
     <>
+      {recaptchaSiteKey ? (
+        <Script
+          src={`https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`}
+          strategy="afterInteractive"
+          onLoad={() => setRecaptchaLoaded(true)}
+        />
+      ) : null}
+
       <section className="pt-28 pb-20 bg-background">
         <div className="max-w-6xl mx-auto px-6">
           <AnimatedSection>
@@ -52,20 +168,22 @@ export default function ContactPage() {
       <section className="py-24 bg-background">
         <div className="max-w-4xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-            {/* Contact form */}
             <AnimatedSection>
               <div>
                 <h2 className="text-xl font-extralight tracking-tight mb-6">
                   Send us a message.
                 </h2>
-                <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+                <form className="space-y-5" onSubmit={handleSubmit}>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[11px] text-muted-foreground mb-1.5 block tracking-wide">
                         First Name
                       </label>
                       <input
+                        name="firstName"
                         type="text"
+                        value={form.firstName}
+                        onChange={handleChange}
                         className="w-full border border-border rounded-md px-3 py-2 text-sm bg-card font-extralight focus:outline-none focus:border-kendo/40 transition-colors"
                       />
                     </div>
@@ -74,7 +192,10 @@ export default function ContactPage() {
                         Last Name
                       </label>
                       <input
+                        name="lastName"
                         type="text"
+                        value={form.lastName}
+                        onChange={handleChange}
                         className="w-full border border-border rounded-md px-3 py-2 text-sm bg-card font-extralight focus:outline-none focus:border-kendo/40 transition-colors"
                       />
                     </div>
@@ -84,7 +205,11 @@ export default function ContactPage() {
                       Work Email
                     </label>
                     <input
+                      name="workEmail"
                       type="email"
+                      value={form.workEmail}
+                      onChange={handleChange}
+                      required
                       className="w-full border border-border rounded-md px-3 py-2 text-sm bg-card font-extralight focus:outline-none focus:border-kendo/40 transition-colors"
                     />
                   </div>
@@ -93,20 +218,84 @@ export default function ContactPage() {
                       Company
                     </label>
                     <input
+                      name="company"
                       type="text"
+                      value={form.company}
+                      onChange={handleChange}
                       className="w-full border border-border rounded-md px-3 py-2 text-sm bg-card font-extralight focus:outline-none focus:border-kendo/40 transition-colors"
                     />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1.5 block tracking-wide">
+                      Region
+                    </label>
+                    <select
+                      name="region"
+                      value={form.region}
+                      onChange={handleChange}
+                      className="w-full border border-border rounded-md px-3 py-2 text-sm bg-card font-extralight focus:outline-none focus:border-kendo/40 transition-colors"
+                    >
+                      {offices.map((office) => (
+                        <option key={office.key} value={office.key}>
+                          {office.region}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="text-[11px] text-muted-foreground mb-1.5 block tracking-wide">
                       Message
                     </label>
                     <textarea
+                      name="message"
                       rows={4}
+                      value={form.message}
+                      onChange={handleChange}
+                      required
                       className="w-full border border-border rounded-md px-3 py-2 text-sm bg-card font-extralight focus:outline-none focus:border-kendo/40 transition-colors resize-none"
                     />
                   </div>
-                  <Button className="bg-kendo hover:bg-kendo-light text-white text-xs px-6 h-9 font-normal tracking-wide">
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-muted-foreground font-extralight">
+                      Submissions are protected by reCAPTCHA and recorded for
+                      the team (including your network address for abuse
+                      prevention). For regional routing, you can still reach{" "}
+                      <span className="text-foreground">
+                        {selectedOffice.email}
+                      </span>
+                      .
+                    </p>
+                    {status ? (
+                      <p className="text-[11px] text-kendo font-extralight">
+                        {status}
+                      </p>
+                    ) : null}
+                    <p className="text-[10px] text-muted-foreground/70 font-extralight leading-relaxed">
+                      This site is protected by reCAPTCHA and the Google{" "}
+                      <a
+                        href="https://policies.google.com/privacy"
+                        className="underline hover:text-kendo"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Privacy Policy
+                      </a>{" "}
+                      and{" "}
+                      <a
+                        href="https://policies.google.com/terms"
+                        className="underline hover:text-kendo"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Terms of Service
+                      </a>{" "}
+                      apply.
+                    </p>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="bg-kendo hover:bg-kendo-light text-white text-xs px-6 h-9 font-normal tracking-wide"
+                  >
                     Send Message
                     <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                   </Button>
@@ -114,7 +303,6 @@ export default function ContactPage() {
               </div>
             </AnimatedSection>
 
-            {/* Office locations */}
             <AnimatedSection delay={0.15}>
               <div>
                 <h2 className="text-xl font-extralight tracking-tight mb-6">
@@ -123,7 +311,7 @@ export default function ContactPage() {
                 <div className="space-y-6">
                   {offices.map((office) => (
                     <div
-                      key={office.region}
+                      key={office.key}
                       className="border border-border rounded-lg p-5 bg-card"
                     >
                       <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">
@@ -155,7 +343,12 @@ export default function ContactPage() {
                     your own use case.
                   </p>
                   <Button
+                    type="button"
                     variant="outline"
+                    onClick={() => {
+                      window.location.href =
+                        "mailto:ikendo@moreinsight.ai?subject=Schedule%20Demo";
+                    }}
                     className="mt-4 border-kendo/30 text-kendo hover:bg-kendo/10 text-xs h-8 font-normal"
                   >
                     Schedule Demo

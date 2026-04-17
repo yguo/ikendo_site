@@ -189,11 +189,18 @@ export async function POST(request: Request) {
     const debug =
       process.env.NODE_ENV === "development" || process.env.CONTACT_API_DEBUG === "1";
     const message = err instanceof Error ? err.message : String(err);
+    const shareWithEmail =
+      cause === "sheets_permission_denied"
+        ? process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || null
+        : null;
     return NextResponse.json(
       {
         error: "Server error",
         cause,
-        ...(debug ? { debug: message } : {}),
+        ...(shareWithEmail ? { shareWithEmail } : {}),
+        ...(debug && cause !== "sheets_permission_denied"
+          ? { debug: message }
+          : {}),
       },
       { status: 500 }
     );

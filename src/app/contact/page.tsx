@@ -59,7 +59,8 @@ const recaptchaSiteKey =
 const CONTACT_ERROR_HINTS: Record<string, string> = {
   sheets_permission_denied:
     "In My Drive: Share → add the service account as Editor (not Viewer). Confirm GOOGLE_SHEET_ID matches this file’s URL. Match GOOGLE_SHEET_RANGE to the bottom tab name (e.g. Sheet1!A1). Check Data → Protected sheets and ranges. Confirm GOOGLE_PRIVATE_KEY belongs to the same service account as GOOGLE_SERVICE_ACCOUNT_EMAIL.",
-  sheets_not_found: "Check GOOGLE_SHEET_ID matches the spreadsheet URL.",
+  sheets_not_found_or_inaccessible:
+    "Google often says “File not found” when the service account has no access (not only when the id is wrong). Open this spreadsheet → Share → add the service account as Editor. Compare the resolved id below to the /d/…/ segment in your browser (watch I vs l, 0 vs O).",
   sheets_invalid_range:
     "Set GOOGLE_SHEET_RANGE to an existing tab, e.g. Sheet1!A1 (tab name must match exactly).",
   google_auth_failed:
@@ -145,9 +146,13 @@ export default function ContactPage() {
         shareWithEmail?: string;
         googleStatus?: string;
         googleMessage?: string;
+        spreadsheetIdResolved?: string;
       };
       if (!res.ok) {
         const hint = data.cause ? CONTACT_ERROR_HINTS[data.cause] : "";
+        const idLine = data.spreadsheetIdResolved
+          ? `Resolved spreadsheet id: ${data.spreadsheetIdResolved}`
+          : "";
         const shareLine = data.shareWithEmail
           ? `Service account to add as Editor: ${data.shareWithEmail}`
           : "";
@@ -156,7 +161,7 @@ export default function ContactPage() {
             ? [data.googleStatus, data.googleMessage].filter(Boolean).join(": ")
             : "";
         setStatus(
-          [data.error, hint, shareLine, googleLine, data.debug]
+          [data.error, hint, idLine, shareLine, googleLine, data.debug]
             .filter(Boolean)
             .join(" — ") ||
             "Something went wrong. Please try again."

@@ -14,10 +14,21 @@ type SiteverifyResponse = {
   "error-codes"?: string[];
 };
 
-/** If user pasted a full Sheets URL, extract the spreadsheet id. */
+/**
+ * Extract spreadsheet id from a URL or bare id.
+ * Strips whitespace/BOM and decodes URL-encoding so pasted links survive .env pastes.
+ */
 function normalizeSpreadsheetId(raw: string): string {
-  const s = raw.trim();
-  const fromUrl = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  let s = raw
+    .trim()
+    .replace(/^\uFEFF/, "")
+    .replace(/\s+/g, "");
+  try {
+    s = decodeURIComponent(s);
+  } catch {
+    /* ignore */
+  }
+  const fromUrl = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i);
   if (fromUrl) return fromUrl[1];
   return s.replace(/[#?].*$/, "").replace(/\/$/, "");
 }
@@ -77,7 +88,9 @@ function summarizeGoogleError(err: unknown): string {
     return "sheets_permission_denied";
   }
   if (lower.includes("not found") || httpStatus === 404) {
-    return "sheets_not_found";
+    // Drive often returns 404 "File not found" when the caller has *no access*,
+    // not only when the id is wrong — treat as a dedicated hint for users.
+    return "sheets_not_found_or_inaccessible";
   }
   if (lower.includes("unable to parse range") || lower.includes("invalid data")) {
     return "sheets_invalid_range";
@@ -276,17 +289,22 @@ export async function POST(request: Request) {
       process.env.NODE_ENV === "development" || process.env.CONTACT_API_DEBUG === "1";
     const message = err instanceof Error ? err.message : String(err);
     const shareWithEmail =
-      cause === "sheets_permission_denied"
+      cause === "sheets_permission_denied" ||
+      cause === "sheets_not_found_or_inaccessible"
         ? process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || null
         : null;
     const safeGoogleMessage =
       googleMessage && googleMessage.length > 0
         ? googleMessage.slice(0, 280)
         : undefined;
+    const sheetIdForEcho = normalizeSpreadsheetId(
+      process.env.GOOGLE_SHEET_ID?.trim() || ""
+    );
     return NextResponse.json(
       {
         error: "Server error",
         cause,
+        ...(sheetIdForEcho ? { spreadsheetIdResolved: sheetIdForEcho } : {}),
         ...(googleStatus ? { googleStatus } : {}),
         ...(safeGoogleMessage ? { googleMessage: safeGoogleMessage } : {}),
         ...(shareWithEmail ? { shareWithEmail } : {}),

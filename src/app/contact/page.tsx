@@ -58,7 +58,7 @@ const recaptchaSiteKey =
 
 const CONTACT_ERROR_HINTS: Record<string, string> = {
   sheets_permission_denied:
-    "Share this file with the service account as Editor. If it lives in a Team Drive (Shared drive), add the same account to that drive as Content manager, or move the sheet to My Drive. Check Data → Protected sheets and ranges. GOOGLE_SHEET_ID should be the id only (or paste the full URL). GOOGLE_SHEET_RANGE tab name must match the sheet tab at the bottom exactly.",
+    "In My Drive: Share → add the service account as Editor (not Viewer). Confirm GOOGLE_SHEET_ID matches this file’s URL. Match GOOGLE_SHEET_RANGE to the bottom tab name (e.g. Sheet1!A1). Check Data → Protected sheets and ranges. Confirm GOOGLE_PRIVATE_KEY belongs to the same service account as GOOGLE_SERVICE_ACCOUNT_EMAIL.",
   sheets_not_found: "Check GOOGLE_SHEET_ID matches the spreadsheet URL.",
   sheets_invalid_range:
     "Set GOOGLE_SHEET_RANGE to an existing tab, e.g. Sheet1!A1 (tab name must match exactly).",
@@ -66,7 +66,7 @@ const CONTACT_ERROR_HINTS: Record<string, string> = {
     "GOOGLE_PRIVATE_KEY is malformed in Vercel (use \\n for newlines in one line) or email does not match the key.",
   missing_google_env: "Server is missing Google Sheets environment variables.",
   drive_not_editable:
-    "The file is visible to the service account but not editable — upgrade share to Editor, add the account to the Team Drive, or adjust protected ranges.",
+    "The account can open the file but not edit it — use Editor in Share, or relax Data → Protected sheets and ranges.",
   wrong_mime: "GOOGLE_SHEET_ID points to a file that is not a Google Spreadsheet.",
   google_api_disabled:
     "In Google Cloud Console (same project as this service account), enable APIs: Google Drive API and Google Sheets API, then wait a minute and retry.",

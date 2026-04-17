@@ -22,12 +22,25 @@ function apiErr(err: unknown): string {
 /**
  * POST with header `x-ikendo-contact-diagnose: <CONTACT_DIAGNOSE_SECRET>` (same value in .env).
  * Returns which step fails (JWT, sheets.get, drive.get, append probe) without posting a real form.
+ *
+ * Responses are always JSON (including wrong secret / missing env), so curl and browsers never get HTML.
  */
+export function GET() {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "use_post",
+      hint: "POST to this URL with header x-ikendo-contact-diagnose set to CONTACT_DIAGNOSE_SECRET. Optional query: ?writeTestRow=1",
+    },
+    { status: 405, headers: { Allow: "POST, OPTIONS" } }
+  );
+}
+
 export async function POST(request: NextRequest) {
   const expected = process.env.CONTACT_DIAGNOSE_SECRET?.trim();
   const given = request.headers.get("x-ikendo-contact-diagnose")?.trim();
   if (!expected || given !== expected) {
-    return new NextResponse(null, { status: 404 });
+    return NextResponse.json({ ok: false }, { status: 404 });
   }
 
   const sheetIdRaw = process.env.GOOGLE_SHEET_ID?.trim();

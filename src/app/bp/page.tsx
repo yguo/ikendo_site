@@ -62,28 +62,28 @@ const marketSignals = [
 
 const moatPillars = [
   {
-    icon: Shield,
-    title: "Behavior Control Layer",
-    body: "Guidelines、Procedures、Schema Tool Calling、Simulations 组成行为控制层，把实时语音变成可配置、可回归的企业执行系统。",
-    bullets: ["规则优先", "策略可版本化", "仿真可回放"],
+    icon: Layers,
+    title: "动态上下文装配",
+    body: "参考 Parlant 等产品强调的 context engineering：每一轮只把与当前话题、流程阶段和风险边界相关的策略、知识与工具说明注入模型上下文，而不是把所有条规一次性塞进单一 system prompt，从结构上降低注意力稀释与「临场乱答」。",
+    bullets: ["按轮次装配", "少即是多", "与模型迭代解耦"],
+  },
+  {
+    icon: Workflow,
+    title: "会话状态驱动行为",
+    body: "用可观测的会话与业务状态（流程节点、风险标签、客户意图簇等）决定哪些 guideline、工具调用与话术边界生效；多规则并存时由控制层裁决与合并，而不是完全依赖 LLM 自行权衡。",
+    bullets: ["状态 → 策略", "关键路径可裁决", "多主题并行不乱"],
   },
   {
     icon: ClipboardCheck,
     title: "行业 SOP 资产化",
-    body: "把理赔 intake、回访、订单售后、风险提示等行业流程沉淀成模板、失败场景库与评测集，形成复制优势。",
+    body: "把理赔 intake、回访、订单售后、风险提示等行业流程沉淀成模板、失败场景库与评测集，与上述控制层叠加后形成可复制的交付资产，而不是一次性 prompt 工程。",
     bullets: ["流程模板", "失败场景库", "评测/回归集"],
   },
   {
     icon: Scale,
-    title: "企业交付与合规",
-    body: "权限沙箱、审计 trace、回滚、多区域数据策略与留存控制，使平台能够进入高置信行业的真实生产环境。",
+    title: "企业交付与可追责",
+    body: "权限沙箱、审计 trace、回滚与多区域数据策略，使「在什么状态下触发了什么行为」可解释、可回归；优化目标锚定业务结果与替代人工的可量化 ROI。",
     bullets: ["多租户", "审计 trace", "回滚与区域部署"],
-  },
-  {
-    icon: CircleDollarSign,
-    title: "单位经济导向",
-    body: "优化目标不是每分钟语音质量，而是每次成功结果的成本，用 outcome 与业务结果定义价值。",
-    bullets: ["按结果优化", "降低人工转接", "更可解释的 ROI"],
   },
 ];
 
@@ -781,8 +781,8 @@ export default function InvestorBpPage() {
           <AnimatedSection>
             <SectionHeading
               eyebrow="Why We Win"
-              title="相比 ElevenLabs，我们的后发优势是企业行为控制与交付系统"
-              description="iKendo 不与全球语音能力平台争夺同一价值定义。我们面向的是企业会话执行与持续优化这一更贴近预算和采购的层。"
+              title="我们的优势"
+              description="思路与 Parlant 等产品强调的「动态上下文 + 会话状态控制 Agent 行为」一致：在每一轮只装配刚好相关的规则与边界，并用显式状态驱动当下允许的行为集合。iKendo 把这一层做实到企业实时语音、业务系统集成与交付运维上——企业采购的是可执行、可回归、可追责的会话结果，而不是单次 demo 的听感。"
             />
           </AnimatedSection>
           <div className="mt-10 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">

@@ -561,12 +561,16 @@ function FundingBars() {
   );
 }
 
+/** Horizontal inset for all BP sections: slightly wider than `px-6` on phones + safe-area on notches. */
+const bpInset =
+  "mx-auto w-full max-w-6xl pl-[max(1.75rem,env(safe-area-inset-left,0px))] pr-[max(1.75rem,env(safe-area-inset-right,0px))] sm:pl-8 sm:pr-8 md:pl-8 md:pr-8";
+
 export default function InvestorBpPage() {
   return (
-    <div className="bg-background">
+    <div className="bg-background overflow-x-hidden">
       <section className="relative overflow-hidden border-b border-border bg-background pt-28 pb-14 md:pt-32 md:pb-20">
         <SignalBackdrop />
-        <div className="relative mx-auto max-w-6xl px-6">
+        <div className={`relative ${bpInset}`}>
           <AnimatedSection>
             <div className="mx-auto max-w-4xl text-center">
               <Badge variant="outline" className="text-[10px] font-normal">
@@ -622,7 +626,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="Market Window"
@@ -714,7 +718,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="border-y border-border bg-secondary/40 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="Pain & Need"
@@ -777,7 +781,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="Why We Win"
@@ -827,7 +831,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="border-y border-border bg-secondary/40 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="Product Matrix"
@@ -859,7 +863,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="Technology"
@@ -912,7 +916,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="border-y border-border bg-secondary/40 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="GTM"
@@ -1003,7 +1007,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="Business Model"
@@ -1058,11 +1062,15 @@ export default function InvestorBpPage() {
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.4, delay: index * 0.08 }}
-                      className="grid grid-cols-[0.9fr_0.8fr_1fr] items-center gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3"
+                      className="grid min-w-0 grid-cols-[0.9fr_0.8fr_1fr] items-center gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3"
                     >
-                      <div className="text-sm font-light tracking-tight">{item.year}</div>
-                      <div className="text-[12px] text-muted-foreground">{item.customers}</div>
-                      <div className="text-right text-sm font-light tracking-tight">
+                      <div className="min-w-0 truncate text-sm font-light tracking-tight">
+                        {item.year}
+                      </div>
+                      <div className="min-w-0 truncate text-[12px] text-muted-foreground">
+                        {item.customers}
+                      </div>
+                      <div className="min-w-0 text-right text-sm font-light tracking-tight truncate">
                         {item.arr}
                       </div>
                     </motion.div>
@@ -1075,7 +1083,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="border-y border-border bg-secondary/40 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="Core Team"
@@ -1116,7 +1124,7 @@ export default function InvestorBpPage() {
       </section>
 
       <section className="py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className={bpInset}>
           <AnimatedSection>
             <SectionHeading
               eyebrow="Funding & Milestones"

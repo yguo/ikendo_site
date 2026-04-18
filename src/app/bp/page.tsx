@@ -209,7 +209,7 @@ const team = [
     ],
   },
   {
-    name: "Kelly Lee",
+    name: "Claire Lee",
     role: "实时音视频 / 算法产品化",
     points: [
       "原字节跳动资深 AI 算法专家",
